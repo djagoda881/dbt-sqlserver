@@ -5,6 +5,9 @@ SQL Server doesnt support this, so we use the 'SELECT * INTO XYZ FROM ABC' synta
 
 {% macro sqlserver__create_table_as(temporary, relation, sql) -%}
 
+   {%- set option_clause  = config.get('option_clause') -%}
+   {%- set sql_header = config.get('sql_header') -%}
+
    {% set tmp_relation = relation.incorporate(
    path={"identifier": relation.identifier.replace("#", "") ~ '_temp_view'},
    type='view')-%}
@@ -29,7 +32,18 @@ SQL Server doesnt support this, so we use the 'SELECT * INTO XYZ FROM ABC' synta
         ({{listColumns}}) SELECT {{listColumns}} FROM [{{tmp_relation.database}}].[{{tmp_relation.schema}}].[{{tmp_relation.identifier}}];
 
     {%- else %}
-      EXEC('SELECT * INTO [{{relation.database}}].[{{relation.schema}}].[{{relation.identifier}}] FROM [{{tmp_relation.database}}].[{{tmp_relation.schema}}].[{{tmp_relation.identifier}}];');
+
+        {% if sql_header %}
+            {{ sql_header }} 
+        {% endif %}
+
+        SELECT * INTO [{{relation.database}}].[{{relation.schema}}].[{{relation.identifier}}] 
+        FROM [{{tmp_relation.database}}].[{{tmp_relation.schema}}].[{{tmp_relation.identifier}}]
+        
+        {% if option_clause  %}
+            OPTION( {{ option_clause }} )
+        {% endif %}
+    
     {% endif %}
 
     {{ fabric__drop_relation_script(tmp_relation) }}
